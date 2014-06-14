@@ -12,6 +12,8 @@ using System.IO;
 using Microsoft.VisualStudio.Package;
 using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
 using Microsoft.VisualStudio.TextManager.Interop;
+using EnvDTE;
+using System.Collections.Generic;
 
 namespace rdomunozcom.EditProj
 {
@@ -36,6 +38,12 @@ namespace rdomunozcom.EditProj
     [Guid(GuidList.guidEditProjPkgString)]
     public sealed class EditProjPackage : Package
     {
+
+        private CommandEvents commandEvents;
+        private DTE dte;
+        private string tempProjFile;
+        private string projFile;
+
         /// <summary>
         /// Default constructor of the package.
         /// Inside this method you can place any initialization code that does not require 
@@ -64,7 +72,7 @@ namespace rdomunozcom.EditProj
             base.Initialize();
 
             // Add our command handlers for menu (commands must exist in the .vsct file)
-            OleMenuCommandService mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            OleMenuCommandService mcs = this.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (null != mcs)
             {
                 // Create the command for the menu item.
@@ -72,6 +80,11 @@ namespace rdomunozcom.EditProj
                 var menuItem = new OleMenuCommand(MenuItemCallback, menuCommandID);
                 menuItem.BeforeQueryStatus += menuCommand_BeforeQueryStatus;
 
+                this.dte = this.GetService(typeof(DTE)) as DTE;
+                // need to keep a strong reference to CommandEvents so that it's not GC'ed
+                this.commandEvents = this.dte.Events.CommandEvents["{5EFC7975-14BC-11CF-9B2B-00AA00573819}", 331];
+
+                this.commandEvents.AfterExecute += commandEvents_AfterExecute;
                 mcs.AddCommand(menuItem);
             }
         }
@@ -194,24 +207,37 @@ namespace rdomunozcom.EditProj
             // Get the file path
             string itemFullPath = null;
             ((IVsProject)hierarchy).GetMkDocument(itemid, out itemFullPath);
-
+            this.projFile = itemFullPath;
 
             string projectData = File.ReadAllText(itemFullPath);
             string tempDir = Path.GetTempPath();
             string tempProjFile = Guid.NewGuid().ToString() + ".xml";
-            File.WriteAllText(Path.Combine(tempDir, tempProjFile), projectData);
+            this.tempProjFile = Path.Combine(tempDir, tempProjFile);
+            File.WriteAllText(this.tempProjFile, projectData);
 
             OpenFileInEditor(Path.Combine(tempDir, this.tempProjFile), Resources.Project, uiHierarchy, itemid);
         }
 
 
-        private static void OpenFile(string filePath, string fileName, IVsUIHierarchy uiHierarchy, UInt32 itemID, bool openWith = false)
         private void OpenFileInEditor(string filePath, string fileName, IVsUIHierarchy uiHierarchy, UInt32 itemID, bool openWith = false)
         {
             this.dte.ExecuteCommand("File.OpenFile", filePath);
         }
 
+        private void commandEvents_AfterExecute(string Guid, int ID, object CustomIn, object CustomOut)
+        {
+            string contents = ReadFile(this.tempProjFile);
+            SetFileContents(this.projFile, contents);
         }
 
+        private static void SetFileContents(string filePath, string content)
+        {
+            File.WriteAllText(filePath, content);
+        }
+
+        private static string ReadFile(string filePath)
+        {
+            return File.ReadAllText(filePath);
+        }
     }
 }
