@@ -201,36 +201,16 @@ namespace rdomunozcom.EditProj
             string tempProjFile = Guid.NewGuid().ToString() + ".xml";
             File.WriteAllText(Path.Combine(tempDir, tempProjFile), projectData);
 
-            OpenFile(Path.Combine(tempDir, tempProjFile), Resources.Project, uiHierarchy, itemid);
+            OpenFileInEditor(Path.Combine(tempDir, this.tempProjFile), Resources.Project, uiHierarchy, itemid);
         }
 
 
         private static void OpenFile(string filePath, string fileName, IVsUIHierarchy uiHierarchy, UInt32 itemID, bool openWith = false)
+        private void OpenFileInEditor(string filePath, string fileName, IVsUIHierarchy uiHierarchy, UInt32 itemID, bool openWith = false)
         {
-            IVsUIShellOpenDocument openDocument = Package.GetGlobalService(typeof(SVsUIShellOpenDocument)) as IVsUIShellOpenDocument;
-            IVsWindowFrame frame = null;
-            __VSOSEFLAGS flags = openWith ? __VSOSEFLAGS.OSE_UseOpenWithDialog : __VSOSEFLAGS.OSE_ChooseBestStdEditor;
+            this.dte.ExecuteCommand("File.OpenFile", filePath);
+        }
 
-            if (openDocument != null)
-            {
-                Int32 hr;
-                IntPtr docData = new IntPtr(-1);
-
-                Guid logicalView = VSConstants.LOGVIEWID_Primary;
-
-                hr = openDocument.OpenStandardEditor(
-                    (uint)flags,
-                    filePath,
-                    ref logicalView,
-                    fileName,
-                    uiHierarchy,
-                    itemID,
-                    docData,
-                    null,
-                    out frame);
-                if (frame != null)
-                    frame.Show();
-            }
         }
 
     }
