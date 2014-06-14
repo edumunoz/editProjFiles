@@ -39,10 +39,9 @@ namespace rdomunozcom.EditProj
     public sealed class EditProjPackage : Package
     {
 
-        private CommandEvents commandEvents;
+        private CommandEvents saveFileCommand, saveAllCommand, exitCommand;
         private DTE dte;
-        private string tempProjFile;
-        private string projFile;
+        private IDictionary<string, string> tempToProjFiles;
 
         /// <summary>
         /// Default constructor of the package.
@@ -53,7 +52,7 @@ namespace rdomunozcom.EditProj
         /// </summary>
         public EditProjPackage()
         {
-            Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering constructor for: {0}", this.ToString()));
+            this.tempToProjFiles = new Dictionary<string, string>();
         }
 
 
@@ -82,9 +81,11 @@ namespace rdomunozcom.EditProj
 
                 this.dte = this.GetService(typeof(DTE)) as DTE;
                 // need to keep a strong reference to CommandEvents so that it's not GC'ed
-                this.commandEvents = this.dte.Events.CommandEvents["{5EFC7975-14BC-11CF-9B2B-00AA00573819}", 331];
+                this.saveFileCommand = this.dte.Events.CommandEvents[VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.SaveProjectItem];
+                this.saveAllCommand = this.dte.Events.CommandEvents[VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.SaveSolution];
 
-                this.commandEvents.AfterExecute += commandEvents_AfterExecute;
+                this.saveFileCommand.AfterExecute += saveCommands_AfterExecute;
+                this.saveAllCommand.AfterExecute += saveCommands_AfterExecute;
                 mcs.AddCommand(menuItem);
             }
         }
@@ -205,17 +206,17 @@ namespace rdomunozcom.EditProj
             IVsUIHierarchy uiHierarchy = hierarchy as IVsUIHierarchy;
 
             // Get the file path
-            string itemFullPath = null;
-            ((IVsProject)hierarchy).GetMkDocument(itemid, out itemFullPath);
-            this.projFile = itemFullPath;
+            string projFilePath = null;
+            ((IVsProject)hierarchy).GetMkDocument(itemid, out projFilePath);
 
-            string projectData = File.ReadAllText(itemFullPath);
+            string projectData = File.ReadAllText(projFilePath);
             string tempDir = Path.GetTempPath();
             string tempProjFile = Guid.NewGuid().ToString() + ".xml";
-            this.tempProjFile = Path.Combine(tempDir, tempProjFile);
-            File.WriteAllText(this.tempProjFile, projectData);
+            string tempProjFilePath = Path.Combine(tempDir, tempProjFile);
+            this.tempToProjFiles[tempProjFilePath] = projFilePath;
+            File.WriteAllText(tempProjFilePath, projectData);
 
-            OpenFileInEditor(Path.Combine(tempDir, this.tempProjFile), Resources.Project, uiHierarchy, itemid);
+            OpenFileInEditor(Path.Combine(tempDir, tempProjFilePath), Resources.Project, uiHierarchy, itemid);
         }
 
 
@@ -224,10 +225,29 @@ namespace rdomunozcom.EditProj
             this.dte.ExecuteCommand("File.OpenFile", filePath);
         }
 
-        private void commandEvents_AfterExecute(string Guid, int ID, object CustomIn, object CustomOut)
+        private void saveCommands_AfterExecute(string Guid, int ID, object CustomIn, object CustomOut)
         {
-            string contents = ReadFile(this.tempProjFile);
-            SetFileContents(this.projFile, contents);
+            switch ((uint)ID)
+            {
+                case (uint)Microsoft.VisualStudio.VSConstants.VSStd97CmdID.SaveProjectItem:
+                        UpdateProjFile(dte.ActiveWindow.Document.Path + dte.ActiveWindow.Document.Name);
+                        break;
+                case (uint)Microsoft.VisualStudio.VSConstants.VSStd97CmdID.SaveSolution:
+                    foreach (string tempProjFile in this.tempToProjFiles.Keys)
+                    {
+                        UpdateProjFile(tempProjFile);
+                    }
+                    break;
+                default:
+                    return;
+            }
+        }
+
+
+        private void UpdateProjFile(string tempFilePath)
+        {
+            string contents = ReadFile(tempFilePath);
+            SetFileContents(this.tempToProjFiles[tempFilePath], contents);
         }
 
         private static void SetFileContents(string filePath, string content)
