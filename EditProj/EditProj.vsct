@@ -34,46 +34,16 @@
     group; your package should define its own command set in order to avoid collisions  
     with command ids defined by other packages. -->
 
-    
-    <!-- In this section you can define new menu groups. A menu group is a container for 
-         other menus or buttons (commands); from a visual point of view you can see the 
-         group as the part of a menu contained between two lines. The parent of a group 
-         must be a menu. -->
-    <Groups>
-
-      <Group guid="guidEditProjCmdSet" id="MyMenuGroup" priority="0x0600">
-        <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE"/>
-      </Group>
-      
-
-
-    </Groups>
-    
-    <!--Buttons section. -->
-    <!--This section defines the elements the user can interact with, like a menu command or a button 
-        or combo box in a toolbar. -->
     <Buttons>
-      <!--To define a menu group you have to specify its ID, the parent menu and its display priority. 
-          The command is visible and enabled by default. If you need to change the visibility, status, etc, you can use
-          the CommandFlag node.
-          You can add more than one CommandFlag node e.g.:
-              <CommandFlag>DefaultInvisible</CommandFlag>
-              <CommandFlag>DynamicVisibility</CommandFlag>
-          If you do not want an image next to your command, remove the Icon node /> -->
-
-      <Button guid="guidEditProjCmdSet" id="editProjFile" priority="0x0100" type="Button">
-        <Parent guid="guidEditProjCmdSet" id="MyMenuGroup" />
-        <Icon guid="guidImages" id="bmpPic1" />
+      <Button guid="guidEditProjCmdSet" id="editProjFile" priority="0x0050" type="Button">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_CTXT_PROJECT_PROPERTIES" />
         <CommandFlag>DynamicVisibility</CommandFlag>
         <Strings>
           <ButtonText>Edit project file</ButtonText>
         </Strings>
       </Button>
-
-
-
-    </Buttons>
    
+    </Buttons>
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
     <Bitmaps>
       <!--  The bitmap id is defined in a way that is a little bit different from the others: 
@@ -87,18 +57,12 @@
  
   </Commands>
 
-
-
-
-
   <Symbols>
     <!-- This is the package guid. -->
     <GuidSymbol name="guidEditProjPkg" value="{67374493-7f41-4665-bb0f-9ce9ede3fe7b}" />
     
     <!-- This is the guid used to group the menu commands together -->
     <GuidSymbol name="guidEditProjCmdSet" value="{d2f70dae-9a2d-47e1-a470-7354a552821c}">
-
-      <IDSymbol name="MyMenuGroup" value="0x1020" />
       <IDSymbol name="editProjFile" value="0x0100" />
     </GuidSymbol>
     
