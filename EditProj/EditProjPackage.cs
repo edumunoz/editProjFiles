@@ -56,7 +56,6 @@ namespace rdomunozcom.EditProj
         }
 
 
-
         /////////////////////////////////////////////////////////////////////////////
         // Overridden Package Implementation
         #region Package Members
@@ -77,46 +76,17 @@ namespace rdomunozcom.EditProj
                 // Create the command for the menu item.
                 CommandID menuCommandID = new CommandID(GuidList.guidEditProjCmdSet, (int)PkgCmdIDList.editProjFile);
                 var menuItem = new OleMenuCommand(MenuItemCallback, menuCommandID);
-                menuItem.BeforeQueryStatus += menuCommand_BeforeQueryStatus;
 
                 this.dte = this.GetService(typeof(DTE)) as DTE;
                 // need to keep a strong reference to CommandEvents so that it's not GC'ed
                 this.saveFileCommand = this.dte.Events.CommandEvents[VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.SaveProjectItem];
                 this.saveAllCommand = this.dte.Events.CommandEvents[VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.SaveSolution];
+                this.exitCommand = this.dte.Events.CommandEvents[VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.Exit];
 
                 this.saveFileCommand.AfterExecute += saveCommands_AfterExecute;
                 this.saveAllCommand.AfterExecute += saveCommands_AfterExecute;
+                this.exitCommand.BeforeExecute += exitCommand_BeforeExecute;
                 mcs.AddCommand(menuItem);
-            }
-        }
-
-        private void menuCommand_BeforeQueryStatus(object sender, EventArgs e)
-        {
-            // get the menu that fired the event
-            var menuCommand = sender as OleMenuCommand;
-            if (menuCommand != null)
-            {
-                // start by assuming that the menu will not be shown
-                menuCommand.Visible = false;
-                menuCommand.Enabled = false;
-
-                IVsHierarchy hierarchy = null;
-                uint itemid = VSConstants.VSITEMID_NIL;
-
-                //if (!IsSingleProjectItemSelection(out hierarchy, out itemid)) return;
-                //// Get the file path
-                //string itemFullPath = null;
-                //((IVsProject)hierarchy).GetMkDocument(itemid, out itemFullPath);
-                //var transformFileInfo = new FileInfo(itemFullPath);
-
-                // then check if the file is named 'web.config'
-                //bool isWebConfig = string.Compare("web.config", transformFileInfo.Name, StringComparison.OrdinalIgnoreCase) == 0;
-
-                //// if not leave the menu hidden
-                //if (!isWebConfig) return;
-
-                menuCommand.Visible = true;
-                menuCommand.Enabled = true;
             }
         }
 
@@ -243,6 +213,18 @@ namespace rdomunozcom.EditProj
             }
         }
 
+        private void exitCommand_BeforeExecute(string Guid, int ID, object CustomIn, object CustomOut, ref bool CancelDefault)
+        {
+            foreach (Document doc in this.dte.Documents)
+            {
+                if (this.tempToProjFiles.ContainsKey(doc.FullName))
+                {
+                    string path = doc.FullName;
+                    doc.Close();
+                    File.Delete(path);
+                }
+            }
+        }
 
         private void UpdateProjFile(string tempFilePath)
         {
