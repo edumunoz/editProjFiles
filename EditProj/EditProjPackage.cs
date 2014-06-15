@@ -14,6 +14,7 @@ using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
 using Microsoft.VisualStudio.TextManager.Interop;
 using EnvDTE;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace rdomunozcom.EditProj
 {
@@ -90,66 +91,6 @@ namespace rdomunozcom.EditProj
             }
         }
 
-        private static bool IsSingleProjectItemSelection(out IVsHierarchy hierarchy, out uint itemid)
-        {
-            hierarchy = null;
-            itemid = VSConstants.VSITEMID_NIL;
-            int hr = VSConstants.S_OK;
-
-            IVsMonitorSelection monitorSelection = Package.GetGlobalService(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
-            var solution = Package.GetGlobalService(typeof(SVsSolution)) as IVsSolution;
-            if (monitorSelection == null || solution == null)
-            {
-                return false;
-            }
-
-            IVsMultiItemSelect multiItemSelect = null;
-            IntPtr hierarchyPtr = IntPtr.Zero;
-            IntPtr selectionContainerPtr = IntPtr.Zero;
-
-            try
-            {
-                hr = monitorSelection.GetCurrentSelection(out hierarchyPtr, out itemid, out multiItemSelect, out selectionContainerPtr);
-
-                if (ErrorHandler.Failed(hr) || hierarchyPtr == IntPtr.Zero || itemid == VSConstants.VSITEMID_NIL)
-                {
-                    // there is no selection
-                    return false;
-                }
-
-                // multiple items are selected
-                if (multiItemSelect != null) return false;
-
-                // there is a hierarchy root node selected, thus it is not a single item inside a project
-
-                if (itemid == VSConstants.VSITEMID_ROOT) return true;
-
-                hierarchy = Marshal.GetObjectForIUnknown(hierarchyPtr) as IVsHierarchy;
-                if (hierarchy == null) return false;
-
-                Guid guidProjectID = Guid.Empty;
-
-                if (ErrorHandler.Failed(solution.GetGuidOfProject(hierarchy, out guidProjectID)))
-                {
-                    return false; // hierarchy is not a project inside the Solution if it does not have a ProjectID Guid
-                }
-
-                // if we got this far then there is a single project item selected
-                return true;
-            }
-            finally
-            {
-                if (selectionContainerPtr != IntPtr.Zero)
-                {
-                    Marshal.Release(selectionContainerPtr);
-                }
-
-                if (hierarchyPtr != IntPtr.Zero)
-                {
-                    Marshal.Release(hierarchyPtr);
-                }
-            }
-        }
         #endregion
 
         /// <summary>
@@ -158,6 +99,42 @@ namespace rdomunozcom.EditProj
         /// the OleMenuCommandService service and the MenuCommand class.
         /// </summary>
         private void MenuItemCallback(object sender, EventArgs e)
+        {
+            try
+            {
+                string projFilePath = GetPathOfSelectedItem();
+                string tempProjFilePath;
+
+                if (DocumentAlreadyOpen(projFilePath, out tempProjFilePath))
+                {
+                    tempProjFilePath = GetTempFileFor(projFilePath);
+                }
+                else
+                {
+                    if (tempProjFilePath != null)
+                    {
+                        this.tempToProjFiles.Remove(tempProjFilePath);
+                    }
+
+                    tempProjFilePath = CreateTempFileWithContentsOf(projFilePath);
+                    this.tempToProjFiles[tempProjFilePath] = projFilePath;
+                }
+
+                OpenFileInEditor(tempProjFilePath);
+            }
+
+            catch (Exception ex)
+            {
+                Debug.WriteLine(string.Format("There was an exception: {0}", ex));
+            }
+        }
+
+        private string GetTempFileFor(string projFilePath)
+        {
+            return this.tempToProjFiles.FirstOrDefault(kv => kv.Value == projFilePath).Key;
+        }
+
+        private string GetPathOfSelectedItem()
         {
             IVsUIShellOpenDocument openDocument = Package.GetGlobalService(typeof(SVsUIShellOpenDocument)) as IVsUIShellOpenDocument;
 
@@ -178,19 +155,35 @@ namespace rdomunozcom.EditProj
             // Get the file path
             string projFilePath = null;
             ((IVsProject)hierarchy).GetMkDocument(itemid, out projFilePath);
+            return projFilePath;
+        }
 
-            string projectData = File.ReadAllText(projFilePath);
+        private static string CreateTempFileWithContentsOf(string filePath)
+        {
+            string projectData = File.ReadAllText(filePath);
             string tempDir = Path.GetTempPath();
             string tempProjFile = Guid.NewGuid().ToString() + ".xml";
             string tempProjFilePath = Path.Combine(tempDir, tempProjFile);
-            this.tempToProjFiles[tempProjFilePath] = projFilePath;
             File.WriteAllText(tempProjFilePath, projectData);
 
-            OpenFileInEditor(Path.Combine(tempDir, tempProjFilePath), Resources.Project, uiHierarchy, itemid);
+            return tempProjFilePath;
+        }
+
+        private bool DocumentAlreadyOpen(string projFilePath, out string tempProjFile)
+        {
+            bool haveOpened = this.tempToProjFiles.Values.Contains(projFilePath);
+            tempProjFile = null;
+            if (haveOpened)
+            {
+                tempProjFile = GetTempFileFor(projFilePath);
+                return File.Exists(tempProjFile);
+            }
+
+            return false;
         }
 
 
-        private void OpenFileInEditor(string filePath, string fileName, IVsUIHierarchy uiHierarchy, UInt32 itemID, bool openWith = false)
+        private void OpenFileInEditor(string filePath)
         {
             this.dte.ExecuteCommand("File.OpenFile", filePath);
         }
