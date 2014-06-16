@@ -39,7 +39,7 @@
         <Parent guid="guidSHLMainMenu" id="IDG_VS_CTXT_PROJECT_PROPERTIES" />
         <CommandFlag>DynamicVisibility</CommandFlag>
         <Strings>
-          <ButtonText>Edit project file</ButtonText>
+          <ButtonText>Edit Project File</ButtonText>
         </Strings>
       </Button>
    
