@@ -109,7 +109,7 @@ namespace rdomunozcom.EditProj
                 string projFilePath = GetPathOfSelectedItem();
                 string tempProjFilePath;
 
-                if (DocumentAlreadyOpen(projFilePath, out tempProjFilePath))
+                if (TempFileExists(projFilePath, out tempProjFilePath))
                 {
                     tempProjFilePath = GetTempFileFor(projFilePath);
                 }
@@ -120,10 +120,11 @@ namespace rdomunozcom.EditProj
                         this.tempToProjFiles.Remove(tempProjFilePath);
                     }
 
-                    tempProjFilePath = CreateTempFileWithContentsOf(projFilePath);
+                    tempProjFilePath = GetNewTempFilePath();
                     this.tempToProjFiles[tempProjFilePath] = projFilePath;
                 }
 
+                CreateTempFileWithContentsOf(projFilePath, tempProjFilePath);
                 OpenFileInEditor(tempProjFilePath);
             }
 
@@ -162,18 +163,21 @@ namespace rdomunozcom.EditProj
             return projFilePath;
         }
 
-        private static string CreateTempFileWithContentsOf(string filePath)
+        private static string GetNewTempFilePath()
         {
-            string projectData = File.ReadAllText(filePath);
             string tempDir = Path.GetTempPath();
             string tempProjFile = Guid.NewGuid().ToString() + ".xml";
             string tempProjFilePath = Path.Combine(tempDir, tempProjFile);
-            File.WriteAllText(tempProjFilePath, projectData);
-
             return tempProjFilePath;
         }
 
-        private bool DocumentAlreadyOpen(string projFilePath, out string tempProjFile)
+        private static void CreateTempFileWithContentsOf(string sourcePath, string destPath)
+        {
+            string projectData = File.ReadAllText(sourcePath);
+            File.WriteAllText(destPath, projectData);
+        }
+
+        private bool TempFileExists(string projFilePath, out string tempProjFile)
         {
             bool haveOpened = this.tempToProjFiles.Values.Contains(projFilePath);
             tempProjFile = null;
