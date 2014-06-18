@@ -15,6 +15,7 @@ using Microsoft.VisualStudio.TextManager.Interop;
 using EnvDTE;
 using System.Collections.Generic;
 using System.Linq;
+using EnvDTE80;
 
 namespace rdomunozcom.EditProj
 {
@@ -43,6 +44,9 @@ namespace rdomunozcom.EditProj
         private CommandEvents saveFileCommand, saveAllCommand, exitCommand;
         private DTE dte;
         private IDictionary<string, string> tempToProjFiles;
+
+        // Calling the QueryEditFiles method within the body pops up a query dialog. While the dialog is waiting for the user, the shell automatically can call the method checking for dirtiness and that will call CanEditFile again. To avoid recursion we use the _GettingCheckOutStatus flag as a guard
+        private bool gettingCheckoutStatus = false;
 
         /// <summary>
         /// Default constructor of the package.
@@ -222,7 +226,22 @@ namespace rdomunozcom.EditProj
         private void UpdateProjFile(string tempFilePath)
         {
             string contents = ReadFile(tempFilePath);
-            SetFileContents(this.tempToProjFiles[tempFilePath], contents);
+            string projFile = this.tempToProjFiles[tempFilePath];
+            if (CanEditFile(this.tempToProjFiles[tempFilePath]))
+            {
+                NotifyForSave(projFile);
+                SetFileContents(projFile, contents);
+                NotifyDocChanged(projFile);
+            }
+        }
+
+        private void NotifyForSave(string p)
+        {
+            int hr;
+            IVsQueryEditQuerySave2 queryEditQuerySave = (IVsQueryEditQuerySave2)GetService(typeof(SVsQueryEditQuerySave));
+            uint result;
+            hr = queryEditQuerySave.QuerySaveFile(p, 0, null, out result);
+
         }
 
         private static void SetFileContents(string filePath, string content)
@@ -233,6 +252,51 @@ namespace rdomunozcom.EditProj
         private static string ReadFile(string filePath)
         {
             return File.ReadAllText(filePath);
+        }
+
+        private bool CanEditFile(string p)
+        {
+            if (gettingCheckoutStatus) return false;
+
+            try
+            {
+                gettingCheckoutStatus = true;
+
+                IVsQueryEditQuerySave2 queryEditQuerySave =
+                  (IVsQueryEditQuerySave2)GetService(typeof(SVsQueryEditQuerySave));
+
+                string[] documents = { p };
+                uint result;
+                uint outFlags;
+
+                int hr = queryEditQuerySave.QueryEditFiles(
+                  0,
+                  1,
+                  documents,
+                  null,
+                  null,
+                  out result,
+                  out outFlags);
+                if (ErrorHandler.Succeeded(hr) && (result ==
+                  (uint)tagVSQueryEditResult.QER_EditOK))
+                {
+                    return true;
+                }
+            }
+            finally
+            {
+                gettingCheckoutStatus = false;
+            }
+            return false;
+        }
+
+
+        private void NotifyDocChanged(string p)
+        {
+            IVsFileChangeEx fileChangeEx =
+              (IVsFileChangeEx)GetService(typeof(SVsFileChangeEx));
+            int hr;
+            hr = fileChangeEx.SyncFile(p);
         }
     }
 }
