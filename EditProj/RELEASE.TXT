@@ -1,0 +1,12 @@
+Version 1.1.1
+=============
+Fix for stale project file.
+
+Version 1.1.0
+=============
+* Fix for project files that are read-only, e.g., under source control and need to be checked out.
+* New icon
+
+Version 1.0.0
+=============
+First functioning version
