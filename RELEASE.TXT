@@ -1,3 +1,7 @@
+Version 1.1.2
+=============
+Fix for some users for which the paths change case.
+
 Version 1.1.1
 =============
 Fix for stale project file.
