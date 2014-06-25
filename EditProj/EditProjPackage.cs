@@ -57,7 +57,7 @@ namespace rdomunozcom.EditProj
         /// </summary>
         public EditProjPackage()
         {
-            this.tempToProjFiles = new Dictionary<string, string>();
+            this.tempToProjFiles = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
         }
 
 
@@ -201,7 +201,7 @@ namespace rdomunozcom.EditProj
             switch ((uint)ID)
             {
                 case (uint)Microsoft.VisualStudio.VSConstants.VSStd97CmdID.SaveProjectItem:
-                        UpdateProjFile(dte.ActiveWindow.Document.Path + dte.ActiveWindow.Document.Name);
+                        UpdateProjFile(dte.ActiveWindow.Document.FullName);
                         break;
                 case (uint)Microsoft.VisualStudio.VSConstants.VSStd97CmdID.SaveSolution:
                     foreach (string tempProjFile in this.tempToProjFiles.Keys)
