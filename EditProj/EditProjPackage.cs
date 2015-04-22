@@ -1,21 +1,16 @@
-﻿using System;
+﻿using EnvDTE;
+using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.InteropServices;
-using System.ComponentModel.Design;
-using Microsoft.Win32;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.OLE.Interop;
-using Microsoft.VisualStudio.Shell;
 using System.IO;
-using Microsoft.VisualStudio.Package;
-using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
-using Microsoft.VisualStudio.TextManager.Interop;
-using EnvDTE;
-using System.Collections.Generic;
 using System.Linq;
-using EnvDTE80;
+using System.Runtime.InteropServices;
+using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
 
 namespace rdomunozcom.EditProj
 {
@@ -40,7 +35,6 @@ namespace rdomunozcom.EditProj
     [Guid(GuidList.guidEditProjPkgString)]
     public sealed class EditProjPackage : Package
     {
-
         private CommandEvents saveFileCommand, saveAllCommand, exitCommand;
         private DTE dte;
         private IDictionary<string, string> tempToProjFiles;
@@ -59,7 +53,6 @@ namespace rdomunozcom.EditProj
         {
             this.tempToProjFiles = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
         }
-
 
         /////////////////////////////////////////////////////////////////////////////
         // Overridden Package Implementation
@@ -115,6 +108,7 @@ namespace rdomunozcom.EditProj
                 }
                 else
                 {
+                    //can delete this if?
                     if (tempProjFilePath != null)
                     {
                         this.tempToProjFiles.Remove(tempProjFilePath);
@@ -239,13 +233,12 @@ namespace rdomunozcom.EditProj
             }
         }
 
-        private void NotifyForSave(string p)
+        private void NotifyForSave(string filePath)
         {
             int hr;
             IVsQueryEditQuerySave2 queryEditQuerySave = (IVsQueryEditQuerySave2)GetService(typeof(SVsQueryEditQuerySave));
             uint result;
-            hr = queryEditQuerySave.QuerySaveFile(p, 0, null, out result);
-
+            hr = queryEditQuerySave.QuerySaveFile(filePath, 0, null, out result);
         }
 
         private static void SetFileContents(string filePath, string content)
@@ -258,7 +251,7 @@ namespace rdomunozcom.EditProj
             return File.ReadAllText(filePath);
         }
 
-        private bool CanEditFile(string p)
+        private bool CanEditFile(string filePath)
         {
             if (gettingCheckoutStatus) return false;
 
@@ -269,18 +262,19 @@ namespace rdomunozcom.EditProj
                 IVsQueryEditQuerySave2 queryEditQuerySave =
                   (IVsQueryEditQuerySave2)GetService(typeof(SVsQueryEditQuerySave));
 
-                string[] documents = { p };
+                string[] documents = { filePath };
                 uint result;
                 uint outFlags;
 
                 int hr = queryEditQuerySave.QueryEditFiles(
                   0,
-                  1,
+                  documents.Length,
                   documents,
                   null,
                   null,
                   out result,
                   out outFlags);
+
                 if (ErrorHandler.Succeeded(hr) && (result ==
                   (uint)tagVSQueryEditResult.QER_EditOK))
                 {
@@ -291,16 +285,16 @@ namespace rdomunozcom.EditProj
             {
                 gettingCheckoutStatus = false;
             }
+
             return false;
         }
 
-
-        private void NotifyDocChanged(string p)
+        private void NotifyDocChanged(string filePath)
         {
             IVsFileChangeEx fileChangeEx =
               (IVsFileChangeEx)GetService(typeof(SVsFileChangeEx));
             int hr;
-            hr = fileChangeEx.SyncFile(p);
+            hr = fileChangeEx.SyncFile(filePath);
         }
     }
 }
