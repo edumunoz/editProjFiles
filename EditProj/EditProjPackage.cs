@@ -10,7 +10,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
 
 namespace rdomunozcom.EditProj
 {
@@ -44,7 +43,7 @@ namespace rdomunozcom.EditProj
             {
                 // Create the command for the menu item.
                 CommandID menuCommandID = new CommandID(GuidList.guidEditProjCmdSet, (int)PkgCmdIDList.editProjFile);
-                var menuItem = new OleMenuCommand(MenuItemCallback, menuCommandID);
+                var menuItem = new MenuCommand(MenuItemCallback, menuCommandID);
 
                 this.dte = this.GetService(typeof(DTE)) as DTE;
                 // need to keep a strong reference to CommandEvents so that it's not GC'ed
@@ -102,7 +101,6 @@ namespace rdomunozcom.EditProj
             IVsUIShellOpenDocument openDocument = Package.GetGlobalService(typeof(SVsUIShellOpenDocument)) as IVsUIShellOpenDocument;
 
             IVsMonitorSelection monitorSelection = Package.GetGlobalService(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
-            IOleServiceProvider serviceProvider = GetService(typeof(IOleServiceProvider)) as IOleServiceProvider;
 
             IVsMultiItemSelect multiItemSelect = null;
             IntPtr hierarchyPtr = IntPtr.Zero;
