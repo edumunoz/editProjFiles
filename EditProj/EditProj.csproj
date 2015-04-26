@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="11.0">
+  <Import Project="..\EditProj.settings" />
   <!-- This is needed to prevent forced migrations when opening the project in Vs2012 -->
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '11.0' ">
     <MinimumVisualStudioVersion>11.0</MinimumVisualStudioVersion>
