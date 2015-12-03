@@ -21,6 +21,7 @@ namespace rdomunozcom.EditProj
     public sealed class EditProjPackage : Package
     {
         private CommandEvents saveFileCommand, saveAllCommand, exitCommand;
+        private DocumentEvents documentEvents;
         private DTE dte;
         private IDictionary<string, string> tempToProjFiles =
             new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
@@ -52,6 +53,10 @@ namespace rdomunozcom.EditProj
                 this.exitCommand = this.dte.Events.CommandEvents[VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.Exit];
 
                 this.saveFileCommand.AfterExecute += saveCommands_AfterExecute;
+                
+                documentEvents = this.dte.Events.DocumentEvents;
+                documentEvents.DocumentClosing += documentClosing;
+
                 this.saveAllCommand.AfterExecute += saveCommands_AfterExecute;
                 this.exitCommand.BeforeExecute += exitCommand_BeforeExecute;
                 mcs.AddCommand(menuItem);
@@ -167,6 +172,15 @@ namespace rdomunozcom.EditProj
                     break;
                 default:
                     return;
+            }
+        }
+
+        private void documentClosing(Document document)
+        {
+            if (this.tempToProjFiles.ContainsKey(document.FullName))
+            {
+                this.tempToProjFiles.Remove(document.FullName);
+                File.Delete(document.FullName);
             }
         }
 
